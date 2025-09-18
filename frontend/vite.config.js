@@ -6,8 +6,10 @@ import react from '@vitejs/plugin-react';
 export default ({ mode }) => {
   process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
 
-  // Fixed proxy URL for deployment
-  const proxy_url = 'http://34.28.133.216:8888/';
+  const proxy_url =
+    process.env.VITE_DEV_REMOTE === 'remote'
+      ? process.env.VITE_BACKEND_SERVER
+      : 'http://34.28.133.216:8888/';
 
   const config = {
     plugins: [react()],
@@ -18,7 +20,6 @@ export default ({ mode }) => {
       },
     },
     server: {
-      host: '0.0.0.0', // Allow external connections
       port: 3000,
       proxy: {
         '/api': {

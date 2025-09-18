@@ -1,4 +1,5 @@
 import currency from 'currency.js';
+import { useMemo } from 'react';
 
 import { useSelector } from 'react-redux';
 import storePersist from '@/redux/storePersist';
@@ -8,9 +9,20 @@ import { selectMoneyFormat } from '@/redux/settings/selectors';
 const useMoney = () => {
   const money_format_settings = useSelector(selectMoneyFormat);
 
-  const money_format_state = money_format_settings
-    ? money_format_settings
-    : storePersist.get('settings')?.money_format_settings;
+  // Memoize the money format state to prevent unnecessary recalculations
+  const money_format_state = useMemo(() => {
+    return money_format_settings
+      ? money_format_settings
+      : storePersist.get('settings')?.money_format_settings || {
+          currency_code: 'USD',
+          currency_symbol: '$',
+          currency_position: 'before',
+          thousand_sep: ',',
+          decimal_sep: '.',
+          cent_precision: 2,
+          zero_format: false
+        };
+  }, [money_format_settings]);
 
   function currencyFormat({ amount, currency_code = money_format_state?.currency_code }) {
     const formattedAmount = currency(amount, {

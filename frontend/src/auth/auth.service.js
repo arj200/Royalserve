@@ -6,16 +6,12 @@ import successHandler from '@/request/successHandler';
 
 export const login = async ({ loginData }) => {
   try {
-    const loginUrl = API_BASE_URL + `login?timestamp=${new Date().getTime()}`;
-    console.log('Login attempt:', {
-      url: loginUrl,
-      data: { ...loginData, password: '[HIDDEN]' }
-    });
-    
-    const response = await axios.post(loginUrl, loginData);
+    const response = await axios.post(
+      API_BASE_URL + `login?timestamp=${new Date().getTime()}`,
+      loginData
+    );
 
     const { status, data } = response;
-    console.log('Login response:', { status, success: data?.success });
 
     successHandler(
       { data, status },
@@ -26,12 +22,6 @@ export const login = async ({ loginData }) => {
     );
     return data;
   } catch (error) {
-    console.error('Login error:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      url: error.config?.url
-    });
     return errorHandler(error);
   }
 };
