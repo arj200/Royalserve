@@ -1,22 +1,31 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export default function useOnFetch() {
   const [result, setResult] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  let onFetch = async (callback) => {
+  // Memoize the onFetch function to prevent unnecessary re-renders
+  const onFetch = useCallback(async (callback) => {
     setIsLoading(true);
+    setIsSuccess(false);
 
-    const data = await callback;
-    setResult(data.result);
-    if (data.success === true) {
-      setIsSuccess(true);
-    } else {
+    try {
+      const data = await callback;
+      setResult(data.result);
+      if (data.success === true) {
+        setIsSuccess(true);
+      } else {
+        setIsSuccess(false);
+      }
+    } catch (error) {
+      console.error('OnFetch error:', error);
       setIsSuccess(false);
+      setResult(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  };
+  }, []);
 
   return { onFetch, result, isSuccess, isLoading };
 }

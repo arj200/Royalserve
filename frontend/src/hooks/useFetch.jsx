@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 function useFetchData(fetchFunction) {
   const [data, setData] = useState(null);
@@ -6,21 +6,39 @@ function useFetchData(fetchFunction) {
   const [isSuccess, setSuccess] = useState(false);
   const [error, setError] = useState(null);
 
+  // Memoize the fetch function to prevent unnecessary re-renders
+  const memoizedFetchFunction = useCallback(fetchFunction, []);
+
   useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates if component unmounts
+    
     async function fetchData() {
       try {
-        const data = await fetchFunction();
-        setData(data.result);
-        setSuccess(true);
+        setLoading(true);
+        const data = await memoizedFetchFunction();
+        
+        if (isMounted) {
+          setData(data.result);
+          setSuccess(true);
+        }
       } catch (error) {
-        setError(error);
+        if (isMounted) {
+          setError(error);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     fetchData();
-  }, [isLoading]);
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [memoizedFetchFunction]); // Remove isLoading dependency to prevent infinite loops
 
   return { data, isLoading, isSuccess, error };
 }

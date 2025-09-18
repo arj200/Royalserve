@@ -1,4 +1,5 @@
 import { Dropdown, Table } from 'antd';
+import { useMemo, useCallback } from 'react';
 
 import { request } from '@/request';
 import useFetch from '@/hooks/useFetch';
@@ -10,11 +11,13 @@ import useLanguage from '@/locale/useLanguage';
 import { useNavigate } from 'react-router-dom';
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 
-export default function RecentTable({ ...props }) {
+export default function RecentTable({ entity, dataTableColumns }) {
   const translate = useLanguage();
-  let { entity, dataTableColumns } = props;
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const items = [
+  // Memoize items to prevent unnecessary re-creation
+  const items = useMemo(() => [
     {
       label: translate('Show'),
       key: 'read',
@@ -30,24 +33,25 @@ export default function RecentTable({ ...props }) {
       key: 'download',
       icon: <FilePdfOutlined />,
     },
-  ];
+  ], [translate]);
 
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-
-  const handleRead = (record) => {
+  // Memoize handlers to prevent unnecessary re-creation
+  const handleRead = useCallback((record) => {
     dispatch(erp.currentItem({ data: record }));
     navigate(`/${entity}/read/${record._id}`);
-  };
-  const handleEdit = (record) => {
+  }, [dispatch, navigate, entity]);
+
+  const handleEdit = useCallback((record) => {
     dispatch(erp.currentAction({ actionType: 'update', data: record }));
     navigate(`/${entity}/update/${record._id}`);
-  };
-  const handleDownload = (record) => {
-    window.open(`${DOWNLOAD_BASE_URL}${entity}/${entity}-${record._id}.pdf`, '_blank');
-  };
+  }, [dispatch, navigate, entity]);
 
-  dataTableColumns = [
+  const handleDownload = useCallback((record) => {
+    window.open(`${DOWNLOAD_BASE_URL}${entity}/${entity}-${record._id}.pdf`, '_blank');
+  }, [entity]);
+
+  // Memoize table columns to prevent unnecessary re-creation
+  const tableColumns = useMemo(() => [
     ...dataTableColumns,
     {
       title: '',
@@ -67,7 +71,6 @@ export default function RecentTable({ ...props }) {
                 case 'download':
                   handleDownload(record);
                   break;
-
                 default:
                   break;
               }
@@ -82,25 +85,38 @@ export default function RecentTable({ ...props }) {
         </Dropdown>
       ),
     },
-  ];
+  ], [dataTableColumns, items, handleRead, handleEdit, handleDownload]);
 
-  const asyncList = () => {
-    return request.list({ entity });
-  };
+  // Memoize fetch function with limit for better performance
+  const asyncList = useCallback(() => {
+    return request.list({ 
+      entity, 
+      options: { 
+        items: 5, // Only fetch 5 items for recent table
+        page: 1 
+      } 
+    });
+  }, [entity]);
+
   const { result, isLoading, isSuccess } = useFetch(asyncList);
-  const firstFiveItems = () => {
-    if (isSuccess && result) return result.slice(0, 5);
+
+  // Memoize filtered data
+  const tableData = useMemo(() => {
+    if (isSuccess && result) {
+      return Array.isArray(result) ? result.slice(0, 5) : (result.result || []).slice(0, 5);
+    }
     return [];
-  };
+  }, [isSuccess, result]);
 
   return (
     <Table
-      columns={dataTableColumns}
+      columns={tableColumns}
       rowKey={(item) => item._id}
-      dataSource={isSuccess && firstFiveItems()}
+      dataSource={tableData}
       pagination={false}
       loading={isLoading}
       scroll={{ x: true }}
+      size="small" // Use smaller size for better performance
     />
   );
 }
